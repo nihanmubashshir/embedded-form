@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ClickFunnel Form</title>
+    <script src="https://js.stripe.com/v3/"></script>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 0;
+        padding: 0;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        width: fit-content;
+      }
+      form {
+        width: 300px;
+        padding: 20px;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+        background-color: #f9f9f9;
+      }
+      input {
+        margin-bottom: 14px;
+      }
+      input[type="text"],
+      input[type="email"] {
+        width: 100%;
+        padding: 10px;
+        margin-bottom: 10px;
+        border: 1px solid #ccc;
+        border-radius: 3px;
+        box-sizing: border-box;
+      }
+      label {
+        margin-bottom: 8px;
+        display: block;
+      }
+      input[type="submit"] {
+        width: 100%;
+        padding: 10px;
+        border: none;
+        border-radius: 3px;
+        background-color: #007bff;
+        color: #fff;
+        cursor: pointer;
+      }
+    </style>
+  </head>
+  <body>
+    <form id="clickFunnelForm" method="POST" onsubmit="redirectToURL(event)">
+      <label for="firstName">First Name:</label>
+      <input type="text" id="firstName" name="firstName" required /><br />
+      <label for="lastName">Last Name:</label>
+      <input type="text" id="lastName" name="lastName" required /><br />
+      <label for="email">Email:</label>
+      <input type="email" id="email" name="email" required /><br />
+      <label for="referralCode">Referral Code:</label>
+      <input type="text" id="referralCode" name="referralCode" required /><br />
+      <input
+        type="hidden"
+        id="priceId"
+        name="priceId"
+        value="price_1OvOapLvF6Jqv5mqkKEsVXwL"
+      /><br />
+      <input type="submit" value="Submit" />
+      <p style="font-size: smaller; float: right">Basic Style</p>
+    </form>
+
+    <div id="checkout"></div>
+
+    <script>
+      const BaseUrl = "http://localhost:5000";
+      const stripe = Stripe(
+        "pk_test_51OtLrkLvF6Jqv5mqLFeAHnkiOrVqXXFK8Em83rPHHQu4cMQ1srBL8l0yYyn6mGJAf1ARJW5eP65GsqG2RI6wJ5fC00HWHB91YA"
+      );
+
+      const hideForm = () => {
+        const form = document.querySelector("#clickFunnelForm");
+        if (form) {
+          form.style.display = "none";
+        }
+      };
+
+      function redirectToURL(event) {
+        event.preventDefault(); // Prevent default form submission
+        const form = event.target;
+        const formData = new FormData(form);
+        const url = "https://capsho-uibr4.ondigitalocean.app/api/click-funnel";
+        const jsonData = {};
+        formData.forEach((value, key) => {
+          jsonData[key] = value;
+        });
+        fetch(url, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(jsonData),
+        })
+          .then((response) => {
+            if (!response.ok) {
+              throw new Error("Network response was not ok", response);
+            }
+            return response.json();
+          })
+          .then((data) => {
+            const { url, error } = data;
+            if (error && error.message == "User already exists") {
+              window.alert(
+                "User alreay exists.Redirecting to sign in. Please click Ok. (NOTE: WAITING FOR BETTER UI DESIGN FOR FORMS.)"
+              );
+
+              setTimeout(
+                () =>
+                  (window.location.href =
+                    "https://capsho-uibr4.ondigitalocean.app/auth/sign-in"),
+                300
+              );
+            }
+
+            if (data.clientSecret) {
+              stripe
+                .initEmbeddedCheckout({
+                  clientSecret: data.clientSecret,
+                })
+                .then((checkout) => {
+                  hideForm();
+                  checkout.mount("#checkout");
+                });
+            }
+          })
+          .catch((error) => {
+            console.error("Error:", error);
+          });
+      }
+    </script>
+  </body>
+</html>
